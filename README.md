@@ -1,48 +1,112 @@
-# JobPulse AI
 
-**Job Market Intelligence & AI Resume Matching Platform**
+# 🚀 JobPulse AI
 
-JobPulse AI is a Python-based application for analyzing collected job postings, identifying technical skills, and comparing resumes against available job requirements.
+### AI-Powered Job Market Intelligence & Resume Analytics
 
-### Live Application
+JobPulse AI is a Python and Streamlit application that
+helps job seekers explore job-market data, evaluate
+resume skill coverage, and identify potential skill gaps.
+
+## 🌐 Live Demo
 
 [Launch JobPulse AI](https://jobpulse-ai-jp.streamlit.app)
 
-## Features
+## ✨ Features
 
-- Job data ingestion through a public job-board API
-- Data cleaning and preprocessing using Pandas
-- SQLite database and SQL analytics
-- Interactive dashboards built with Streamlit and Plotly
-- Resume PDF text extraction
-- Explainable skill-overlap matching
-- Semantic similarity matching using sentence embeddings
-- CSV report generation
+- Interactive job-market dashboard
+- Job filtering and data visualizations
+- PDF resume parsing and skill extraction
+- Keyword-based resume-to-job matching
+- Semantic matching using sentence-transformers
+- Skill demand and gap analysis
+- Rule-based resume bullet rewriting
+- Job-specific skill overlap reports
+- Downloadable CSV and text reports
 
-## Technology Stack
 
-Python, Pandas, SQL, SQLite, Streamlit, Plotly, PyMuPDF, Scikit-learn, Sentence Transformers, and Pytest.
+## 📸 Application Screenshots
 
-## Project Limitations
+### Job Market Dashboard
+![Dashboard](screenshots/dashboard.png)
 
-The current dataset is a collected sample rather than a representative survey of the US job market. Skill extraction is based on available job tags, which may not capture complete requirements. Matching scores describe text similarity or detected skill overlap, not hiring probabilities.
+### Resume Matcher
+![Resume Matcher](screenshots/resume-matcher.png)
 
-## Running Locally
+### Skill Gap Analyzer
+![Skill Gap Analyzer](screenshots/skill-gap.png)
 
-1. Create and activate a Python virtual environment.
-2. Install dependencies from `requirements.txt`.
-3. Run the data collection, cleaning, and database scripts.
-4. Launch the Streamlit application with `python -m streamlit run app.py`.
 
-## Testing
+## 🛠️ Tech Stack
 
-Run `python -m pytest -v` to execute automated tests.
+| Category | Technologies |
+|----------|--------------|
+| Language | Python |
+| Web Application | Streamlit |
+| Data Processing | Pandas |
+| Visualizations | Plotly |
+| NLP | Sentence Transformers |
+| PDF Processing | PyMuPDF |
+| Database | SQLite |
+| Deployment | Streamlit Community Cloud |
+| Version Control | Git & GitHub |
 
-## Future Improvements
+## 🏗️ Architecture
 
-- Broader US job data coverage
-- Full job-description extraction
-- Improved semantic ranking
-- Skill-gap recommendations
-- Model evaluation against manually reviewed matches
-- Cloud deployment
+PDF Resume
+    |
+    v
+Resume Text Extraction
+    |
+    v
+Skill Detection
+    |
+    v
+Job Dataset
+    |
+    v
+Keyword / Semantic Matching
+    |
+    v
+Skill Gap Analysis
+    |
+    v
+Interactive Reports
+
+## 📊 Data
+
+The deployed demo uses a limited historical job dataset.
+
+The application is not a live job-search service.
+Skill overlap scores are not hiring probabilities.
+
+## 💻 Run Locally
+
+1. Clone the repository:
+
+   git clone YOUR_GITHUB_REPOSITORY_URL
+
+2. Navigate to the project folder.
+
+3. Create and activate a virtual environment:
+
+   python3 -m venv .venv
+   source .venv/bin/activate
+
+4. Install dependencies:
+
+   pip install -r requirements.txt
+
+5. Start the application:
+
+   streamlit run app.py
+
+## 🔮 Future Enhancements
+
+- Live job API integration
+- More advanced job description matching
+- Personalized learning recommendations
+- Expanded salary and hiring trend analytics
+
+## 📌 Project Status
+
+Version 1.0 — Portfolio Demo
