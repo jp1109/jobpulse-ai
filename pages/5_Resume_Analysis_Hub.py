@@ -314,3 +314,192 @@ st.page_link(
     label="Open Resume Improvement",
     icon="✨",
 )
+
+# ==========================================
+# 6. JOB-SPECIFIC MATCH REPORT
+# ==========================================
+
+st.divider()
+st.subheader("6. Job-Specific Match Report")
+
+st.write(
+    "Select an individual job to compare its "
+    "detected skills against your resume."
+)
+
+# Use the already-filtered jobs dataframe
+report_jobs = jobs.reset_index(drop=True).copy()
+
+# Create readable job labels
+title_col = next(
+    (c for c in ["title", "job_title", "position"]
+     if c in report_jobs.columns),
+    None,
+)
+
+company_col = next(
+    (c for c in ["company", "company_name"]
+     if c in report_jobs.columns),
+    None,
+)
+
+def make_job_label(row):
+    title = (
+        str(row[title_col])
+        if title_col else "Untitled Job"
+    )
+    company = (
+        str(row[company_col])
+        if company_col else "Unknown Company"
+    )
+    return f"{title} — {company}"
+
+report_jobs["display_label"] = report_jobs.apply(
+    make_job_label,
+    axis=1,
+)
+
+# Include an index to distinguish duplicate titles
+report_jobs["display_label"] = [
+    f"{i + 1}. {label}"
+    for i, label in enumerate(
+        report_jobs["display_label"]
+    )
+]
+
+selected_index = st.selectbox(
+    "Choose a job",
+    options=list(range(len(report_jobs))),
+    format_func=lambda i: (
+        report_jobs.iloc[i]["display_label"]
+    ),
+)
+
+selected_job = report_jobs.iloc[selected_index]
+
+selected_job_skills = parse_skills(
+    selected_job[skill_col]
+)
+
+matched_job_skills = (
+    resume_skills & selected_job_skills
+)
+
+missing_job_skills = (
+    selected_job_skills - resume_skills
+)
+
+match_score = (
+    len(matched_job_skills)
+    / len(selected_job_skills) * 100
+    if selected_job_skills else 0
+)
+
+st.divider()
+
+st.subheader("Job Match Results")
+
+st.metric(
+    "Detected Skill Match",
+    f"{match_score:.1f}%",
+)
+
+st.progress(
+    min(max(match_score / 100, 0.0), 1.0)
+)
+
+st.caption(
+    "This percentage measures detected skill "
+    "overlap only. It is not a hiring probability."
+)
+
+left_col, right_col = st.columns(2)
+
+with left_col:
+    st.markdown("#### Matching Skills")
+
+    if matched_job_skills:
+        st.success(
+            ", ".join(sorted(matched_job_skills))
+        )
+    else:
+        st.info(
+            "No matching skills detected."
+        )
+
+with right_col:
+    st.markdown("#### Skills Not Detected")
+
+    if missing_job_skills:
+        st.warning(
+            ", ".join(sorted(missing_job_skills))
+        )
+    else:
+        st.success(
+            "All listed skills were detected."
+        )
+
+st.divider()
+
+st.subheader("Resume Improvement Guidance")
+
+if matched_job_skills:
+    st.write(
+        "Consider highlighting relevant projects "
+        "where you demonstrated these skills:"
+    )
+
+    st.write(
+        ", ".join(sorted(matched_job_skills))
+    )
+
+if missing_job_skills:
+    st.write(
+        "Review the following skills mentioned "
+        "in the selected posting:"
+    )
+
+    st.write(
+        ", ".join(sorted(missing_job_skills))
+    )
+
+    st.info(
+        "If you already have experience with "
+        "these skills, consider describing it "
+        "more clearly in your resume. "
+        "Otherwise, treat them as possible "
+        "learning priorities."
+    )
+
+if not selected_job_skills:
+    st.warning(
+        "No skills were detected for this job, "
+        "so a meaningful match score cannot "
+        "be calculated."
+    )
+
+# Downloadable job-specific report
+report_text = f"""
+JOBPULSE AI - JOB MATCH REPORT
+
+Job: {selected_job["display_label"]}
+
+Detected Skill Match: {match_score:.1f}%
+
+Matching Skills:
+{", ".join(sorted(matched_job_skills)) or "None"}
+
+Skills Not Detected:
+{", ".join(sorted(missing_job_skills)) or "None"}
+
+Note:
+This report uses keyword-based skill overlap.
+It does not predict hiring outcomes.
+"""
+
+st.download_button(
+    "Download Job Match Report",
+    data=report_text,
+    file_name="jobpulse_job_match_report.txt",
+    mime="text/plain",
+)
