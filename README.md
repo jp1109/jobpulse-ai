@@ -4,6 +4,10 @@
 
 JobPulse AI is a Python-based application for analyzing collected job postings, identifying technical skills, and comparing resumes against available job requirements.
 
+### Live Application
+
+[Launch JobPulse AI](https://jobpulse-ai-jp.streamlit.app)
+
 ## Features
 
 - Job data ingestion through a public job-board API
