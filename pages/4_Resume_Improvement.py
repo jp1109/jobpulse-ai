@@ -1,119 +1,202 @@
 
-import re
-from pathlib import Path
 
+import re
 import streamlit as st
 
 st.set_page_config(
-    page_title="Resume Improvement Assistant",
+    page_title="Smart Resume Rewriter",
     page_icon="✨",
     layout="wide",
 )
 
-st.title("✨ Resume Improvement Assistant")
+st.title("✨ Smart Resume Rewriter")
 
 st.write(
-    "Review resume bullet points and get practical "
-    "suggestions for clearer, more impactful writing."
+    "Improve resume bullet points with clearer "
+    "action verbs, role-specific guidance, "
+    "and practical writing feedback."
 )
 
 st.info(
-    "This version uses transparent writing rules, "
-    "not a generative AI model. Always verify "
-    "suggestions before using them."
+    "This version uses rule-based rewriting, "
+    "not a generative AI model. It does not "
+    "invent metrics, technologies, or achievements."
 )
 
-WEAK_PHRASES = {
-    "responsible for": "Describe the action you took",
-    "worked on": "Specify what you built or improved",
-    "helped with": "Explain your contribution",
-    "involved in": "Describe your individual role",
-    "familiar with": "Demonstrate the skill through a project",
-}
-
-ACTION_VERBS = [
-    "analyzed", "built", "developed", "designed",
-    "implemented", "automated", "optimized",
-    "created", "improved", "evaluated",
-    "validated", "integrated", "deployed",
-    "maintained", "collaborated", "led",
+ROLES = [
+    "Data Analyst",
+    "Data Scientist",
+    "Data Engineer",
+    "AI/ML Engineer",
+    "Business Intelligence Analyst",
+    "Software Engineer",
 ]
 
-def review_bullet(text):
+ROLE_GUIDANCE = {
+    "Data Analyst": (
+        "Emphasize data analysis, SQL, dashboards, "
+        "reporting, and verified business outcomes."
+    ),
+    "Data Scientist": (
+        "Emphasize modeling, experimentation, "
+        "evaluation, and statistical analysis."
+    ),
+    "Data Engineer": (
+        "Emphasize data pipelines, ETL, data quality, "
+        "orchestration, and cloud infrastructure."
+    ),
+    "AI/ML Engineer": (
+        "Emphasize model development, APIs, "
+        "deployment, evaluation, and monitoring."
+    ),
+    "Business Intelligence Analyst": (
+        "Emphasize KPIs, dashboard development, "
+        "reporting, and stakeholder insights."
+    ),
+    "Software Engineer": (
+        "Emphasize implementation, testing, "
+        "system design, APIs, and reliability."
+    ),
+}
+
+# Conservative rewriting rules.
+# Only change phrasing when the action is explicit.
+REWRITE_RULES = [
+    (
+        r"^responsible for creating\b",
+        "Created",
+    ),
+    (
+        r"^responsible for developing\b",
+        "Developed",
+    ),
+    (
+        r"^responsible for analyzing\b",
+        "Analyzed",
+    ),
+    (
+        r"^responsible for designing\b",
+        "Designed",
+    ),
+    (
+        r"^responsible for maintaining\b",
+        "Maintained",
+    ),
+    (
+        r"^responsible for testing\b",
+        "Tested",
+    ),
+    (
+        r"^responsible for implementing\b",
+        "Implemented",
+    ),
+    (
+        r"^worked on creating\b",
+        "Created",
+    ),
+    (
+        r"^worked on developing\b",
+        "Developed",
+    ),
+    (
+        r"^worked on analyzing\b",
+        "Analyzed",
+    ),
+    (
+        r"^worked on building\b",
+        "Built",
+    ),
+    (
+        r"^was involved in creating\b",
+        "Contributed to creating",
+    ),
+    (
+        r"^helped with developing\b",
+        "Contributed to developing",
+    ),
+]
+
+
+def rewrite_bullet(text):
+    original = re.sub(
+        r"\s+", " ", text.strip()
+    )
+
+    improved = original
+
+    for pattern, replacement in REWRITE_RULES:
+        updated = re.sub(
+            pattern,
+            replacement,
+            improved,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+
+        if updated != improved:
+            improved = updated
+            break
+
+    if improved:
+        improved = (
+            improved[0].upper() + improved[1:]
+        )
+
+        if improved[-1] not in ".!?":
+            improved += "."
+
+    return improved
+
+
+def analyze_bullet(text):
     suggestions = []
     lower = text.lower()
+    words = text.split()
 
-    if len(text.split()) < 10:
+    if len(words) < 10:
         suggestions.append(
-            "Add context about the task, tools, "
-            "or business purpose."
+            "Consider adding more specific context "
+            "about your contribution."
         )
 
-    if len(text.split()) > 35:
+    if len(words) > 35:
         suggestions.append(
             "Consider shortening this bullet "
-            "to improve readability."
+            "for readability."
         )
 
-    for phrase, advice in WEAK_PHRASES.items():
-        if phrase in lower:
-            suggestions.append(
-                f"Replace '{phrase}': {advice}."
-            )
-
-    if not any(
-        re.search(r"\b" + verb + r"\b", lower)
-        for verb in ACTION_VERBS
+    if re.search(
+        r"\b(responsible for|worked on|"
+        r"helped with|involved in)\b",
+        lower,
     ):
         suggestions.append(
-            "Consider starting with a strong, "
-            "accurate action verb."
+            "Replace indirect wording with a "
+            "clear description of your actual work."
         )
 
     if not re.search(r"\d", text):
         suggestions.append(
-            "If you have a verified metric, "
-            "consider adding it. Do not invent numbers."
+            "Add a measurable outcome only "
+            "if you have a verified metric."
         )
 
     if not suggestions:
         suggestions.append(
-            "This bullet has a solid structure. "
-            "Check that the details are specific "
-            "and factually accurate."
+            "The bullet is reasonably structured. "
+            "Check its accuracy and relevance."
         )
 
     return suggestions
 
 
-def create_template(text):
-    lower = text.lower()
-
-    if "responsible for" in lower:
-        return (
-            "Action verb + specific responsibility "
-            "+ tools or methods + outcome"
-        )
-
-    if "worked on" in lower or "helped with" in lower:
-        return (
-            "Describe what you personally did "
-            "+ how you did it + why it mattered"
-        )
-
-    return (
-        "Action + task or project + tools "
-        "+ measurable outcome (if verified)"
-    )
-
-
-st.subheader("1. Enter a Resume Bullet")
+st.subheader("1. Enter Your Resume Bullet")
 
 bullet = st.text_area(
-    "Paste one resume bullet point",
+    "Original resume bullet",
     placeholder=(
-        "Example: Worked on Python and SQL "
-        "for data analysis projects."
+        "Responsible for creating dashboards "
+        "using Tableau and SQL."
     ),
     height=130,
 )
@@ -122,81 +205,127 @@ st.subheader("2. Select Target Role")
 
 role = st.selectbox(
     "Target job role",
-    [
-        "Data Analyst",
-        "Data Scientist",
-        "Data Engineer",
-        "AI/ML Engineer",
-        "Business Intelligence Analyst",
-        "Software Engineer",
-    ],
+    ROLES,
 )
 
 if st.button(
-    "Analyze Resume Bullet",
+    "✨ Rewrite My Bullet",
     type="primary",
 ):
     if not bullet.strip():
         st.warning(
-            "Please enter a resume bullet first."
+            "Please enter a resume bullet."
         )
     else:
-        st.subheader("Writing Feedback")
+        improved = rewrite_bullet(bullet)
 
-        suggestions = review_bullet(bullet)
-
-        for suggestion in suggestions:
-            st.write("•", suggestion)
-
-        st.subheader("Recommended Structure")
-        st.success(create_template(bullet))
-
-        st.subheader("Role-Specific Guidance")
-
-        role_guidance = {
-            "Data Analyst": (
-                "Highlight SQL, reporting, dashboards, "
-                "data cleaning, and business insights."
-            ),
-            "Data Scientist": (
-                "Highlight modeling, experimentation, "
-                "evaluation, and statistical analysis."
-            ),
-            "Data Engineer": (
-                "Highlight pipelines, ETL, data quality, "
-                "cloud platforms, and orchestration."
-            ),
-            "AI/ML Engineer": (
-                "Highlight model development, APIs, "
-                "deployment, evaluation, and monitoring."
-            ),
-            "Business Intelligence Analyst": (
-                "Highlight dashboards, KPI definitions, "
-                "SQL, and stakeholder reporting."
-            ),
-            "Software Engineer": (
-                "Highlight implementation, testing, "
-                "APIs, architecture, and reliability."
-            ),
-        }
-
-        st.write(role_guidance[role])
-
-        st.caption(
-            "Mention technologies only if you "
-            "actually used them."
+        st.session_state["original_bullet"] = (
+            bullet.strip()
         )
+
+        st.session_state["improved_bullet"] = (
+            improved
+        )
+
+        st.session_state["selected_role"] = role
+
+
+if "improved_bullet" in st.session_state:
+
+    original = st.session_state[
+        "original_bullet"
+    ]
+
+    improved = st.session_state[
+        "improved_bullet"
+    ]
+
+    selected_role = st.session_state[
+        "selected_role"
+    ]
+
+    st.divider()
+
+    st.subheader(
+        "3. Original vs Improved"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### Original")
+        st.info(original)
+
+    with col2:
+        st.markdown("#### Improved")
+        st.success(improved)
+
+    st.code(
+        improved,
+        language=None,
+    )
+
+    if improved == original:
+        st.caption(
+            "No safe automatic wording change "
+            "was identified. The original wording "
+            "has been preserved."
+        )
+
+    st.divider()
+
+    st.subheader("4. Writing Feedback")
+
+    for suggestion in analyze_bullet(original):
+        st.write("•", suggestion)
+
+    st.subheader("5. Role-Specific Guidance")
+
+    st.write(
+        ROLE_GUIDANCE[selected_role]
+    )
+
+    st.caption(
+        "Include role-specific tools or achievements "
+        "only when they reflect your real experience."
+    )
+
+    st.divider()
+
+    st.subheader("6. Download Improved Bullet")
+
+    st.download_button(
+        "Download as Text",
+        data=improved,
+        file_name="improved_resume_bullet.txt",
+        mime="text/plain",
+    )
+
+    st.caption(
+        "Use the copy icon in the code box "
+        "above to copy your improved bullet."
+    )
 
 st.divider()
 
-st.subheader("3. Resume Bullet Checklist")
+st.subheader("Resume Quality Checklist")
 
-st.checkbox("Starts with a clear action verb")
-st.checkbox("Explains what I personally contributed")
-st.checkbox("Mentions relevant tools when appropriate")
-st.checkbox("Explains the outcome or business value")
-st.checkbox("Includes only verified achievements")
+st.checkbox(
+    "Starts with a clear action verb"
+)
+st.checkbox(
+    "Describes my actual contribution"
+)
+st.checkbox(
+    "Mentions only technologies I used"
+)
+st.checkbox(
+    "Includes verified results where available"
+)
+st.checkbox(
+    "Is relevant to my target role"
+)
 
 st.caption(
-    "JobPulse AI — Resume Improvement Assistant v1"
+    "JobPulse AI | Smart Resume Rewriter v2"
 )
