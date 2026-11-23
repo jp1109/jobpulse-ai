@@ -1,7 +1,4 @@
-from src.semantic_matcher import (
-    load_model,
-    calculate_semantic_matches
-)
+
 import sqlite3
 import sys
 from pathlib import Path
@@ -9,53 +6,75 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+# Project setup
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.resume_matcher import (
     extract_resume_text,
     extract_skills,
-    rank_jobs
+    rank_jobs,
+)
+
+from src.semantic_matcher import (
+    load_model,
+    calculate_semantic_matches,
 )
 
 DB_FILE = PROJECT_ROOT / "data" / "jobpulse.db"
+DEMO_FILE = PROJECT_ROOT / "data" / "demo_jobs.csv"
 
-st.set_page_config(
-    page_title="Resume Matcher | JobPulse AI",
-    page_icon="🎯",
-    layout="wide"
-)
+
+@st.cache_data(ttl=300)
+def load_job_data(db_path, demo_path):
+    db_file = Path(db_path)
+    demo_file = Path(demo_path)
+
+    if db_file.exists():
+        try:
+            with sqlite3.connect(db_file) as conn:
+                jobs = pd.read_sql_query(
+                    "SELECT * FROM jobs", conn
+                )
+            return jobs, "Local SQLite database"
+        except (sqlite3.Error, OSError):
+            pass
+
+    if demo_file.exists():
+        jobs = pd.read_csv(demo_file)
+        return jobs, "Historical demo dataset"
+
+    return pd.DataFrame(), "No dataset available"
+
 
 st.title("🎯 AI Resume Matcher")
+
 st.write(
     "Upload your resume and discover which collected "
     "job postings overlap with your technical skills."
 )
 
 st.info(
-    "Scores are based on detected skills in job tags, "
-    "not full job requirements or hiring probabilities."
+    "Match scores are based on available job information. "
+    "They are not hiring probabilities."
 )
 
 uploaded_file = st.file_uploader(
     "Upload your resume (PDF)",
-    type=["pdf"]
+    type=["pdf"],
 )
 
 if uploaded_file is not None:
 
     try:
-        resume_text = extract_resume_text(
-            uploaded_file.getvalue()
-        )
+        resume_text = extract_resume_text(uploaded_file)
     except Exception as exc:
-        st.error(f"Unable to read this PDF: {exc}")
+        st.error(f"Unable to read PDF: {exc}")
         st.stop()
 
-    if not resume_text.strip():
+    if not resume_text or not resume_text.strip():
         st.warning(
-            "No selectable text was found. "
-            "Scanned PDFs are not yet supported."
+            "No readable text was found in this PDF."
         )
         st.stop()
 
@@ -66,134 +85,122 @@ if uploaded_file is not None:
     if resume_skills:
         st.success(", ".join(sorted(resume_skills)))
     else:
-        st.warning("No skills matched our current dictionary.")
+        st.warning("No supported technical skills detected.")
 
-    st.metric("Detected Resume Skills", len(resume_skills))
+    st.metric(
+        "Detected Resume Skills",
+        len(resume_skills),
+    )
 
-    if not DB_FILE.exists():
-        st.error("Job database not found.")
+    jobs_df, source_label = load_job_data(
+        str(DB_FILE),
+        str(DEMO_FILE),
+    )
+
+    if jobs_df.empty:
+        st.error(
+            "No job postings available. "
+            "Check data/demo_jobs.csv."
+        )
         st.stop()
 
-    with sqlite3.connect(DB_FILE) as conn:
-        jobs_df = pd.read_sql_query(
-            "SELECT * FROM jobs", conn
-        )
-
-    ranked_df = rank_jobs(jobs_df, resume_skills)
-
+    st.caption(f"Data source: {source_label}")
+    st.caption(f"Loaded {len(jobs_df)} job postings")
 
     st.divider()
+
+    # Keyword matching
+    st.subheader("🔎 Skill-Based Job Matching")
+
+    if resume_skills:
+        try:
+            ranked_jobs = rank_jobs(
+                jobs_df,
+                resume_skills,
+            )
+
+            if ranked_jobs.empty:
+                st.info("No matching jobs found.")
+            else:
+                st.dataframe(
+                    ranked_jobs.head(20),
+                    width="stretch",
+                    hide_index=True,
+                )
+
+                st.download_button(
+                    "Download Skill Matches",
+                    data=ranked_jobs.to_csv(
+                        index=False
+                    ).encode("utf-8"),
+                    file_name="jobpulse_skill_matches.csv",
+                    mime="text/csv",
+                )
+
+        except (KeyError, ValueError, TypeError) as exc:
+            st.error(f"Skill matching error: {exc}")
+
+    st.divider()
+
+    # Semantic matching
     st.subheader("🧠 Semantic AI Matching")
 
-    if st.button("Run AI Semantic Matching"):
+    st.write(
+        "Compare the meaning of your resume with "
+        "the available job information using "
+        "sentence embeddings."
+    )
 
-        with st.spinner(
-            "Analyzing resume and job similarity..."
-        ):
-            model = get_embedding_model()
+    if st.button(
+        "Run AI Semantic Matching",
+        type="primary",
+    ):
 
-            semantic_results = calculate_semantic_matches(
-                resume_text,
-                jobs_df,
-                model
+        try:
+            with st.spinner(
+                "Analyzing resume and job similarity..."
+            ):
+
+                model = load_model()
+
+                semantic_results = (
+                    calculate_semantic_matches(
+                        resume_text,
+                        jobs_df,
+                        model,
+                    )
+                )
+
+            if semantic_results is None or semantic_results.empty:
+                st.warning(
+                    "No semantic matching results available."
+                )
+            else:
+                st.success(
+                    "Semantic matching completed!"
+                )
+
+                st.dataframe(
+                    semantic_results.head(20),
+                    width="stretch",
+                    hide_index=True,
+                )
+
+                st.download_button(
+                    "Download Semantic Matches",
+                    data=semantic_results.to_csv(
+                        index=False
+                    ).encode("utf-8"),
+                    file_name="jobpulse_semantic_matches.csv",
+                    mime="text/csv",
+                )
+
+        except Exception as exc:
+            st.error(
+                f"Semantic matching failed: {exc}"
             )
 
-        if semantic_results.empty:
-            st.warning(
-                "No suitable job text is available "
-                "for semantic comparison."
-            )
-        else:
-            st.success("Semantic matching complete!")
-
-            for _, job in semantic_results.head(10).iterrows():
-
-                with st.container(border=True):
-                    st.markdown(
-                        f"### {job['job_title']}"
-                    )
-
-                    st.write(
-                        f"**Company:** {job['company']}"
-                    )
-
-                    st.write(
-                        f"**Location:** {job['location']}"
-                    )
-
-                    st.metric(
-                        "Cosine Similarity",
-                        f"{job['semantic_similarity']:.3f}"
-                    )
-
-                    st.caption(
-                        "Similarity is not a hiring "
-                        "probability or eligibility score."
-                    )
-
-
-    st.divider()
-    st.subheader("Your Top Job Matches")
-
-    if ranked_df.empty:
-        st.warning(
-            "No postings with detectable technical "
-            "skills were found."
-        )
-    else:
-        top_jobs = ranked_df.head(20)
-
-        for _, job in top_jobs.iterrows():
-
-            with st.container(border=True):
-                col1, col2 = st.columns([3, 1])
-
-                with col1:
-                    st.markdown(
-                        f"### {job['job_title']}"
-                    )
-                    st.write(
-                        f"**Company:** {job['company']}"
-                    )
-                    st.write(
-                        f"**Location:** {job['location']}"
-                    )
-
-                with col2:
-                    st.metric(
-                        "Skill Overlap",
-                        f"{job['match_score']:.1f}%"
-                    )
-
-                st.progress(
-                    float(job["match_score"]) / 100
-                )
-
-                st.write(
-                    "**Matched skills:**",
-                    job["matched_skills"] or "None"
-                )
-
-                st.write(
-                    "**Missing skills:**",
-                    job["missing_skills"] or "None"
-                )
-
-                if pd.notna(job["job_url"]) and str(
-                    job["job_url"]
-                ).startswith(("https://", "http://")):
-                    st.link_button(
-                        "View Job Posting",
-                        str(job["job_url"])
-                    )
-
-        st.download_button(
-            "Download Match Results",
-            data=ranked_df.to_csv(index=False),
-            file_name="jobpulse_resume_matches.csv",
-            mime="text/csv"
-        )
-
-@st.cache_resource
-def get_embedding_model():
-    return load_model()
+else:
+    st.info(
+        "Upload a PDF resume to begin matching."
+    )

@@ -17,44 +17,50 @@ st.set_page_config(
     layout="wide"
 )
 
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 DB_FILE = PROJECT_ROOT / "data" / "jobpulse.db"
+DEMO_FILE = PROJECT_ROOT / "data" / "demo_jobs.csv"
 
-# ------------------------------------
-# LOAD DATA FROM SQLITE
-# ------------------------------------
 
 @st.cache_data(ttl=300)
-def load_jobs(db_mtime):
-    with sqlite3.connect(DB_FILE) as conn:
-        return pd.read_sql_query(
-            "SELECT * FROM jobs", conn
-        )
+def load_jobs(source_path, source_mtime):
+    path = Path(source_path)
+
+    if path.suffix == ".db":
+        with sqlite3.connect(path) as conn:
+            return pd.read_sql_query(
+                "SELECT * FROM jobs", conn
+            )
+
+    return pd.read_csv(path)
 
 
-st.title("📊 JobPulse AI")
-st.caption("Job Market Intelligence & Analytics Platform")
-
-if not DB_FILE.exists():
-    st.error(
-        "Database not found. Run the database pipeline first."
-    )
-    st.code(
-        "python src/fetch_jobs.py\n"
-        "python src/clean_jobs.py\n"
-        "python src/database.py"
-    )
+if DB_FILE.exists():
+    source_file = DB_FILE
+    source_label = "Local SQLite database"
+elif DEMO_FILE.exists():
+    source_file = DEMO_FILE
+    source_label = "Historical demo dataset"
+else:
+    st.error("No job data available.")
     st.stop()
 
 try:
-    df = load_jobs(DB_FILE.stat().st_mtime)
-except (sqlite3.Error, pd.errors.DatabaseError) as exc:
-    st.error(f"Unable to read the jobs database: {exc}")
+    df = load_jobs(
+        str(source_file),
+        source_file.stat().st_mtime
+    )
+except (sqlite3.Error, pd.errors.DatabaseError, OSError) as exc:
+    st.error(f"Unable to load job data: {exc}")
     st.stop()
 
+st.caption(f"Data source: {source_label}")
+
 if df.empty:
-    st.warning("No job records are available.")
+    st.warning("No job records available.")
     st.stop()
+
 
 # ------------------------------------
 # SIDEBAR FILTERS
