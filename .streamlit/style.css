@@ -1,0 +1,50 @@
+
+/* JobPulse AI — Professional UI */
+
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    max-width: 1250px;
+}
+
+h1 {
+    color: #172B4D;
+    font-weight: 750;
+    letter-spacing: -0.8px;
+}
+
+h2, h3 {
+    color: #243B53;
+    font-weight: 650;
+}
+
+[data-testid="stMetric"] {
+    background: #F1F6F9;
+    border: 1px solid #E0E9F0;
+    border-radius: 14px;
+    padding: 18px;
+}
+
+[data-testid="stMetricValue"] {
+    color: #087E8B;
+    font-weight: 750;
+}
+
+[data-testid="stSidebar"] {
+    background: #F5F8FC;
+    border-right: 1px solid #E4EBF2;
+}
+
+[data-testid="stFileUploader"] {
+    border-radius: 12px;
+}
+
+.stButton > button[kind="primary"] {
+    border-radius: 10px;
+    font-weight: 650;
+}
+
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+}

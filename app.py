@@ -7,6 +7,11 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from src.ui import apply_custom_css, show_branding
+
+apply_custom_css()
+show_branding()
+
 # ------------------------------------
 # PAGE CONFIGURATION
 # ------------------------------------
